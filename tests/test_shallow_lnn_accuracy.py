@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-"""
-Evaluate the shallow Linear NN saved weights on a test dataset and print accuracy.
-
-Usage:
-  python tests/test_shallow_lnn_accuracy.py --test-dir <path> --model-path <path>
-
-Defaults are set to the paths used in the notebook; override with CLI args if needed.
-"""
 import argparse
 from pathlib import Path
 import torch
