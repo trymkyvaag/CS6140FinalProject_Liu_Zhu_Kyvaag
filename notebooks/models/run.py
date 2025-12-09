@@ -15,6 +15,8 @@ from utils import (
 from cnn import CNN
 from shallow_cnn import ShallowCNN
 
+from advCNN import advCNN  # or define class directly here
+
 
 def train_with_history(model, train_loader, val_loader, device, epochs, lr):
     """Train a model and record per-epoch metrics."""
@@ -72,7 +74,7 @@ def plot_comparison(hist_shallow, hist_deep, save_path=None):
 
 def main():
     args = parse_args(
-        description="Compare ShallowCNN vs CNN on brain tumor dataset",
+        description="Compare ShallowCNN vs CNN vs BetterCNN on brain tumor dataset",
         default_train_root="/content/data/Training",
         default_test_root="/content/data/Testing",
         default_image_size=(224, 224),
@@ -104,8 +106,8 @@ def main():
     print("\nFinal ShallowCNN test performance:")
     evaluate(shallow_model, test_loader, device, split_name="Test")
 
-    # ---- Deeper CNN ----
-    print("\n=== Training CNN ===")
+    # ---- Original CNN baseline ----
+    print("\n=== Training CNNBaseline ===")
     deep_model = CNN(
         in_channels=3,
         num_classes=num_classes,
@@ -120,12 +122,35 @@ def main():
         lr=args.lr,
     )
 
-    print("\nFinal CNN test performance:")
+    print("\nFinal CNNBaseline test performance:")
     evaluate(deep_model, test_loader, device, split_name="Test")
 
+    # ---- BetterCNN ----
+    print("\n=== Training advCNN ===")
+    better_model = advCNN(
+        num_classes=num_classes,
+        image_size=image_size,
+    ).to(device)
+
+    hist_better = train_with_history(
+        better_model,
+        train_loader,
+        test_loader,
+        device,
+        epochs=args.epochs,
+        lr=args.lr,
+    )
+
+    print("\nFinal advCNN test performance:")
+    evaluate(better_model, test_loader, device, split_name="Test")
+
     # ---- Plot comparison ----
-    plot_comparison(hist_shallow, hist_deep,
-                    save_path="model_comparison_val_acc.png")
+    plot_comparison(
+        hist_shallow,
+        hist_deep,
+        hist_better,
+        save_path="model_comparison_val_acc_three_models.png",
+    )
 
 
 if __name__ == "__main__":
