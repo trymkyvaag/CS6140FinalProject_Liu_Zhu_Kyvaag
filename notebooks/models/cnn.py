@@ -3,6 +3,14 @@
 import torch
 import torch.nn as nn
 
+from utils import (
+    parse_args,
+    get_device,
+    get_dataloaders,
+    maybe_load_checkpoint,
+    train_loop,
+    evaluate,
+)
 
 
 class CNN(nn.Module):
@@ -43,3 +51,36 @@ class CNN(nn.Module):
         return x
 
 
+def main():
+    args = parse_args(
+        description="CNN baseline for brain tumor classification",
+        default_train_root="/content/data/Training",
+        default_test_root="/content/data/Testing",
+        default_image_size=(224, 224),
+        default_batch_size=32,
+        default_epochs=10,
+        default_lr=1e-3,
+    )
+
+    device = get_device()
+    train_loader, test_loader, num_classes = get_dataloaders(args, device)
+
+    model = CNN(
+        in_channels=3,
+        num_classes=num_classes,
+    ).to(device)
+
+    model = maybe_load_checkpoint(model, args.ckpt_path, device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+
+    # Common training loop + logging
+    train_loop(model, train_loader, test_loader,
+               optimizer, device, args.epochs)
+
+    print("Final evaluation on test set:")
+    evaluate(model, test_loader, device, split_name="Test")
+
+
+if __name__ == "__main__":
+    main()
