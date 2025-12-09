@@ -15,7 +15,7 @@ from utils import (
 
 from shallow_cnn import ShallowCNN
 from cnn import CNN
-from advCNN import advCNN 
+from advCNN import advCNN
 
 
 from torchvision.models import resnet18, ResNet18_Weights
@@ -155,7 +155,8 @@ def main():
     labels = []
 
     # ---- ShallowCNN ----
-    shallow = ShallowCNN(num_classes=num_classes, image_size=image_size).to(device)
+    shallow = ShallowCNN(num_classes=num_classes,
+                         image_size=image_size).to(device)
     shallow, hist_shallow = train_with_history_and_checkpoint(
         name="shallow_cnn",
         model=shallow,

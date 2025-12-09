@@ -5,7 +5,7 @@ import torch.nn as nn
 from utils import (
     parse_args,
     get_device,
-    get_dataloaders,
+    get_dataloaders_with_val,
     maybe_load_checkpoint,
     train_loop,
 )
