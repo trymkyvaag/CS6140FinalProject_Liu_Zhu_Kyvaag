@@ -37,7 +37,7 @@ def show_image(img, label=None, classes=None, denorm=True):
 
     plt.show()
 
-
+#test pushing github
 if __name__ == "__main__":
     # Example usage
     dummy_img = torch.randn(3, 64, 64)  # Random image tensor
