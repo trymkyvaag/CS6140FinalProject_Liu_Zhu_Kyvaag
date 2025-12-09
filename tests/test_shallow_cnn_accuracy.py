@@ -5,7 +5,7 @@ import torch.nn as nn
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
-
+#AAA test push -boxun
 class ShallowCNN(nn.Module):
     def __init__(self, num_classes, image_size=(224, 224)):
         super().__init__()
