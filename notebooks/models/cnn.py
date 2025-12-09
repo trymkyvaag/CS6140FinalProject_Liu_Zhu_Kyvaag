@@ -6,8 +6,6 @@ import torch.nn as nn
 from utils import (
     parse_args,
     get_device,
-    get_dataloaders,
-    maybe_load_checkpoint,
     train_loop,
     evaluate,
 )
