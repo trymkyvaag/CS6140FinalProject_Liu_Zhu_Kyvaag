@@ -1,5 +1,6 @@
 # notebooks/models/compare_models.py
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -12,10 +13,9 @@ from utils import (
     evaluate,
 )
 
-from cnn import CNN
 from shallow_cnn import ShallowCNN
-
-from advCNN import advCNN  # or define class directly here
+from cnn import CNN
+from advCNN import advCNN
 
 
 def train_with_history(model, train_loader, val_loader, device, epochs, lr):
@@ -49,18 +49,58 @@ def train_with_history(model, train_loader, val_loader, device, epochs, lr):
     return history
 
 
-def plot_comparison(hist_shallow, hist_deep, save_path=None):
+def run_model(name, model_ctor, model_kwargs, args, device, train_loader, test_loader):
+    """
+    Train or load a model + its history.
+
+    - checkpoint: checkpoints/{name}_best.pth
+    - history:    checkpoints/{name}_history.pt
+    """
+    os.makedirs("checkpoints", exist_ok=True)
+    ckpt_path = f"checkpoints/{name}_best.pth"
+    hist_path = f"checkpoints/{name}_history.pt"
+
+    model = model_ctor(**model_kwargs).to(device)
+
+    if (
+        not args.retrain
+        and os.path.exists(ckpt_path)
+        and os.path.exists(hist_path)
+    ):
+        print(f"\n=== {name}: loading from checkpoint ===")
+        model.load_state_dict(torch.load(ckpt_path, map_location=device))
+        history = torch.load(hist_path)
+    else:
+        print(f"\n=== {name}: training ===")
+        history = train_with_history(
+            model, train_loader, test_loader, device, epochs=args.epochs, lr=args.lr
+        )
+
+        torch.save(model.state_dict(), ckpt_path)
+        torch.save(history, hist_path)
+        print(f"Saved {name} checkpoint to {ckpt_path}")
+        print(f"Saved {name} history to    {hist_path}")
+
+    print(f"\nFinal {name} test performance:")
+    evaluate(model, test_loader, device, split_name="Test")
+
+    return history
+
+
+def plot_comparison(hist_shallow, hist_deep, hist_better, save_path=None):
     epochs = np.arange(1, len(hist_shallow["val_acc"]) + 1)
 
     plt.figure(figsize=(8, 5))
     plt.plot(epochs, np.array(
         hist_shallow["val_acc"]) * 100.0, label="ShallowCNN")
     plt.plot(epochs, np.array(
-        hist_deep["val_acc"]) * 100.0, label="CNN")
+        hist_deep["val_acc"]) * 100.0, label="CNNBaseline")
+    plt.plot(epochs, np.array(
+        hist_better["val_acc"]) * 100.0, label="BetterCNN")
 
     plt.xlabel("Epoch")
     plt.ylabel("Validation Accuracy (%)")
-    plt.title("ShallowCNN vs CNN – Validation Accuracy")
+    plt.title("ShallowCNN vs CNNBaseline vs BetterCNN – Validation Accuracy")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
@@ -87,70 +127,44 @@ def main():
     train_loader, test_loader, num_classes = get_dataloaders(args, device)
     image_size = tuple(args.image_size)
 
-    # ---- Shallow model ----
-    print("\n=== Training ShallowCNN ===")
-    shallow_model = ShallowCNN(
-        num_classes=num_classes,
-        image_size=image_size,
-    ).to(device)
-
-    hist_shallow = train_with_history(
-        shallow_model,
+    # ---- Run all three models (train or load) ----
+    hist_shallow = run_model(
+        "shallow_cnn",
+        ShallowCNN,
+        {"num_classes": num_classes, "image_size": image_size},
+        args,
+        device,
         train_loader,
         test_loader,
-        device,
-        epochs=args.epochs,
-        lr=args.lr,
     )
 
-    print("\nFinal ShallowCNN test performance:")
-    evaluate(shallow_model, test_loader, device, split_name="Test")
-
-    # ---- Original CNN baseline ----
-    print("\n=== Training CNNBaseline ===")
-    deep_model = CNN(
-        in_channels=3,
-        num_classes=num_classes,
-    ).to(device)
-
-    hist_deep = train_with_history(
-        deep_model,
+    hist_deep = run_model(
+        "cnn",
+        CNN,
+        {"in_channels": 3, "num_classes": num_classes},
+        args,
+        device,
         train_loader,
         test_loader,
-        device,
-        epochs=args.epochs,
-        lr=args.lr,
     )
 
-    print("\nFinal CNNBaseline test performance:")
-    evaluate(deep_model, test_loader, device, split_name="Test")
-
-    # ---- BetterCNN ----
-    print("\n=== Training advCNN ===")
-    better_model = advCNN(
-        num_classes=num_classes,
-        image_size=image_size,
-    ).to(device)
-
-    hist_better = train_with_history(
-        better_model,
+    hist_better = run_model(
+        "adv",
+        advCNN,
+        {"num_classes": num_classes, "image_size": image_size},
+        args,
+        device,
         train_loader,
         test_loader,
-        device,
-        epochs=args.epochs,
-        lr=args.lr,
     )
 
-    print("\nFinal advCNN test performance:")
-    evaluate(better_model, test_loader, device, split_name="Test")
-
-    # ---- Plot comparison ----
-    plot_comparison(
-        hist_shallow,
-        hist_deep,
-        hist_better,
-        save_path="model_comparison_val_acc_three_models.png",
-    )
+    if not args.no_plot:
+        plot_comparison(
+            hist_shallow,
+            hist_deep,
+            hist_better,
+            save_path="model_comparison_val_acc_three_models.png",
+        )
 
 
 if __name__ == "__main__":
