@@ -86,7 +86,7 @@ def main():
     mean = (0.485, 0.456, 0.406)
     std = (0.229, 0.224, 0.225)
 
-    # Data augmentation helps a lot on this dataset
+
     train_transform = transforms.Compose([
         transforms.Resize(image_size),
         transforms.RandomHorizontalFlip(),
@@ -128,8 +128,6 @@ def main():
     print("Num testing images:", len(test_data))
 
     num_classes = len(train_data.classes)
-
-    # Model
     model = TumorResNet18(num_classes=num_classes).to(device)
 
     history = train_with_history(
