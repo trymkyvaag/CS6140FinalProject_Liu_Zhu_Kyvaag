@@ -1,19 +1,15 @@
 # notebooks/models/utils.py
-
 import argparse
 import os
 import time
 
-import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+import numpy as np
 
 
-# -----------------------------
-# Arg parsing
-# -----------------------------
 def parse_args(
     description: str = "CNN classifier",
     default_train_root: str = "/content/data/Training",
@@ -23,6 +19,7 @@ def parse_args(
     default_epochs: int = 30,
     default_lr: float = 1e-3,
 ):
+    """Common argparse for image classification experiments."""
     parser = argparse.ArgumentParser(description=description)
 
     parser.add_argument(
@@ -63,10 +60,10 @@ def parse_args(
         help="Learning rate",
     )
     parser.add_argument(
-        "--val_fraction",
-        type=float,
-        default=0.2,
-        help="Fraction of training data to use as validation",
+        "--ckpt_path",
+        type=str,
+        default=None,
+        help="Optional checkpoint to load (.pth)",
     )
     parser.add_argument(
         "--no_plot",
@@ -82,81 +79,37 @@ def parse_args(
     return parser.parse_args()
 
 
-# -----------------------------
-# Device
-# -----------------------------
 def get_device():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device:", device)
     return device
 
 
-# -----------------------------
-# Transforms (ImageNet style)
-# -----------------------------
 def build_transforms(image_size):
-    """
-    Use ImageNet mean/std so ResNet18 transfer learning is happy.
-    This is also fine for your smaller CNNs.
-    """
-    mean = (0.485, 0.456, 0.406)
-    std = (0.229, 0.224, 0.225)
-
-    train_transform = transforms.Compose([
+    """Common transforms for all models."""
+    return transforms.Compose([
         transforms.Resize(image_size),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(10),
-        transforms.RandomResizedCrop(image_size, scale=(0.9, 1.0)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std),
+        transforms.Normalize(
+            mean=(0.5, 0.5, 0.5),
+            std=(0.5, 0.5, 0.5),
+        ),
     ])
 
-    test_transform = transforms.Compose([
-        transforms.Resize(image_size),
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std),
-    ])
 
-    return train_transform, test_transform
-
-
-# -----------------------------
-# Dataloaders with train/val/test split
-# -----------------------------
-def get_dataloaders_with_val(args, device):
-    """
-    - Uses args.train_root as full TRAIN set → split into train + val.
-    - Uses args.test_root as TEST set only for final evaluation.
-    """
+def get_dataloaders(args, device):
+    """Create train & test loaders + return num_classes."""
     image_size = tuple(args.image_size)
-    train_transform, test_transform = build_transforms(image_size)
+    transform = build_transforms(image_size)
 
-    # Full train set (to be split into train+val)
-    full_train = datasets.ImageFolder(root=args.train_root,
-                                      transform=train_transform)
-
-    n_total = len(full_train)
-    n_val = int(args.val_fraction * n_total)
-    n_train = n_total - n_val
-
-    train_data, val_data = random_split(full_train, [n_train, n_val])
-
-    # Separate test set
-    test_data = datasets.ImageFolder(root=args.test_root,
-                                     transform=test_transform)
+    train_data = datasets.ImageFolder(
+        root=args.train_root, transform=transform)
+    test_data = datasets.ImageFolder(root=args.test_root, transform=transform)
 
     train_loader = DataLoader(
         train_data,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=4,
-        pin_memory=(device.type == "cuda"),
-    )
-    val_loader = DataLoader(
-        val_data,
-        batch_size=args.batch_size,
-        shuffle=False,
         num_workers=4,
         pin_memory=(device.type == "cuda"),
     )
@@ -168,20 +121,14 @@ def get_dataloaders_with_val(args, device):
         pin_memory=(device.type == "cuda"),
     )
 
-    print("Classes:", full_train.dataset.classes)
-    print("Num total train images:", n_total)
-    print("Num train images:", n_train)
-    print("Num val images:", n_val)
-    print("Num test images:", len(test_data))
+    print("Classes:", train_data.classes)
+    print("Num training images:", len(train_data))
+    print("Num testing images:", len(test_data))
 
-    num_classes = len(full_train.dataset.classes)
-
-    return train_loader, val_loader, test_loader, num_classes
+    num_classes = len(train_data.classes)
+    return train_loader, test_loader, num_classes
 
 
-# -----------------------------
-# Train / eval utilities
-# -----------------------------
 def train_one_epoch(model, loader, optimizer, device):
     model.train()
     criterion = nn.CrossEntropyLoss()
@@ -211,7 +158,7 @@ def train_one_epoch(model, loader, optimizer, device):
 
 
 @torch.no_grad()
-def evaluate(model, loader, device, split_name="Val"):
+def evaluate(model, loader, device, split_name="Test"):
     model.eval()
     criterion = nn.CrossEntropyLoss()
 
@@ -235,3 +182,88 @@ def evaluate(model, loader, device, split_name="Val"):
 
     print(f"{split_name} loss: {loss:.4f}  {split_name} acc: {acc*100:.2f}%")
     return loss, acc
+
+
+def maybe_load_checkpoint(model, ckpt_path, device):
+    """Load a checkpoint if provided (handles raw state_dict or dict['state_dict'])."""
+    if ckpt_path is None:
+        return model
+
+    print(f"Loading checkpoint from: {ckpt_path}")
+    ckpt = torch.load(ckpt_path, map_location=device)
+    if isinstance(ckpt, dict) and "state_dict" in ckpt:
+        ckpt = ckpt["state_dict"]
+    model.load_state_dict(ckpt)
+    return model
+
+
+def train_loop(model, train_loader, test_loader, optimizer, device, epochs):
+    """Common training loop with logging."""
+    for epoch in range(1, epochs + 1):
+        start = time.time()
+        train_loss, train_acc = train_one_epoch(
+            model, train_loader, optimizer, device)
+        val_loss, val_acc = evaluate(
+            model, test_loader, device, split_name="Val/Test")
+
+        elapsed = time.time() - start
+        print(
+            f"Epoch {epoch}/{epochs} - "
+            f"{elapsed:.1f}s - "
+            f"train_loss: {train_loss:.4f} train_acc: {train_acc:.4f} "
+            f"val_loss: {val_loss:.4f} val_acc: {val_acc:.4f}"
+        )
+
+
+def train_with_history_and_checkpoint(
+    model,
+    train_loader,
+    val_loader,
+    optimizer,
+    device,
+    epochs,
+    ckpt_path,
+):
+    best_val_acc = -1.0
+
+    history = {
+        "train_loss": [],
+        "train_acc": [],
+        "val_loss": [],
+        "val_acc": [],
+    }
+
+    for epoch in range(1, epochs + 1):
+        train_loss, train_acc = train_one_epoch(
+            model, train_loader, optimizer, device
+        )
+        val_loss, val_acc = evaluate(
+            model, val_loader, device, split_name="Val"
+        )
+
+        history["train_loss"].append(train_loss)
+        history["train_acc"].append(train_acc)
+        history["val_loss"].append(val_loss)
+        history["val_acc"].append(val_acc)
+
+        print(
+            f"Epoch {epoch}/{epochs} | "
+            f"train_loss={train_loss:.4f}, train_acc={train_acc:.4f} | "
+            f"val_loss={val_loss:.4f}, val_acc={val_acc:.4f}"
+        )
+
+        # ✅ Save best checkpoint
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            torch.save(model.state_dict(), ckpt_path)
+            print(f"✅ Saved best model to {ckpt_path}")
+
+    return history
+
+
+def load_if_exists(model, ckpt_path, device):
+    if ckpt_path is not None and os.path.exists(ckpt_path):
+        print(f"✅ Loading existing checkpoint: {ckpt_path}")
+        model.load_state_dict(torch.load(ckpt_path, map_location=device))
+        return True
+    return False
