@@ -83,8 +83,8 @@ def main():
 
     # ImageNet mean/std for pretrained ResNet
     weights = ResNet18_Weights.IMAGENET1K_V1
-    mean = weights.meta["mean"]
-    std = weights.meta["std"]
+    mean = (0.485, 0.456, 0.406)
+    std = (0.229, 0.224, 0.225)
 
     # Data augmentation helps a lot on this dataset
     train_transform = transforms.Compose([
