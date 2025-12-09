@@ -4,7 +4,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-
+import torch.nn as nn
 from utils import (
     parse_args,
     get_device,
