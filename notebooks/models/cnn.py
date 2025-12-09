@@ -8,6 +8,8 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import torch.optim as optim
 
+import argparse
+
 
 class CNNBaseline(nn.Module):
     def __init__(self, in_channels: int = 3, num_classes: int = 4):
@@ -105,60 +107,92 @@ def evaluate(eval_loader, model):
     return accuracy
 
 
-if __name__ == "__main__":
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="CNN baseline for brain tumor classification"
+    )
 
-    torch.manual_seed(0)
-    np.random.seed(0)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(0)
-        torch.backends.cudnn.benchmark = True
+    parser.add_argument(
+        "--train_root",
+        type=str,
+        default="/content/data/Training",
+        help="Path to training data (ImageFolder root)"
+    )
+
+    parser.add_argument(
+        "--test_root",
+        type=str,
+        default="/content/data/Testing",
+        help="Path to testing data (ImageFolder root)"
+    )
+
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=32
+    )
+
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=10
+    )
+
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=1e-3
+    )
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Using device:", device)
+    print("Train root:", args.train_root)
+    print("Test root:", args.test_root)
 
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
-        transforms.ToTensor(),  # (C,H,W), values in [0,1]
+        transforms.ToTensor(),
         transforms.Normalize(
-            mean=(0.5, 0.5, 0.5),  # for 3-channel RGB
+            mean=(0.5, 0.5, 0.5),
             std=(0.5, 0.5, 0.5)
         )
     ])
 
-    # ---------- Datasets ----------
-    train_root = "/Users/trymkyvag/Desktop/Northeastern/Fall 25/CS 6140/Final Project/CS6140FinalProject_Liu_Zhu_Kyvaag/data/Training"
-    test_root = "/Users/trymkyvag/Desktop/Northeastern/Fall 25/CS 6140/Final Project/CS6140FinalProject_Liu_Zhu_Kyvaag/data/Testing"
-
-    train_data = datasets.ImageFolder(root=train_root, transform=transform)
-    test_data = datasets.ImageFolder(root=test_root, transform=transform)
+    train_data = datasets.ImageFolder(
+        root=args.train_root, transform=transform
+    )
+    test_data = datasets.ImageFolder(
+        root=args.test_root, transform=transform
+    )
 
     train_loader = DataLoader(
         train_data,
-        batch_size=32,
+        batch_size=args.batch_size,
         shuffle=True,
         num_workers=4,
-        pin_memory=(device.type == "cuda"),
+        pin_memory=device.type == "cuda",
     )
+
     test_loader = DataLoader(
         test_data,
-        batch_size=32,
+        batch_size=args.batch_size,
         shuffle=False,
         num_workers=4,
-        pin_memory=(device.type == "cuda"),
+        pin_memory=device.type == "cuda",
     )
 
-    print("Classes:", train_data.classes)
-    print("Number of training images:", len(train_data))
-    print("Number of testing images:", len(test_data))
-
-
     model = CNNBaseline(
-        in_channels=3,                     # RGB images
-        num_classes=len(train_data.classes)
+        in_channels=3,
+        num_classes=len(train_data.classes),
     ).to(device)
 
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
-    # ---------- Train & eval ----------
-    train(train_loader, model, optimizer, epochs=10)
+    train(train_loader, model, optimizer, epochs=args.epochs)
     evaluate(test_loader, model)
