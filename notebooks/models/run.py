@@ -12,8 +12,8 @@ from utils import (
     evaluate,
 )
 
-from notebooks.models.cnn import CNNBaseline
-from notebooks.models.shallow_cnn import ShallowCNN
+from cnn import CNNBaseline
+from shallow_cnn import ShallowCNN
 
 
 def train_with_history(model, train_loader, val_loader, device, epochs, lr):

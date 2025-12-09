@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 
-from notebooks.models.utils import (
+from utils import (
     parse_args,
     get_device,
     get_dataloaders,
