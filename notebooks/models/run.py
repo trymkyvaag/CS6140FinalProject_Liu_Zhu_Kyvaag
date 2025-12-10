@@ -191,7 +191,7 @@ def main():
     )
 
     hist_resnet, test_resnet = run_model(
-        "resnet18_tumor",                # matches checkpoints/resnet18_tumor_*.pth
+        "resnet18_tumor",                
         TumorResNet18,
         {"num_classes": num_classes},
         args,
@@ -200,7 +200,6 @@ def main():
         test_loader,
     )
 
-    # Nicely formatted final test accuracy summary
     print("\n=== Final test accuracies (on held-out test set) ===")
     print(f"ShallowCNN       : {test_shallow['test_acc'] * 100:.2f}%")
     print(f"CNNBaseline      : {test_deep['test_acc'] * 100:.2f}%")
