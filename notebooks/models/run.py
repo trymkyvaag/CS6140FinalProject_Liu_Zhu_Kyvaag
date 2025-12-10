@@ -83,9 +83,36 @@ def run_model(name, model_ctor, model_kwargs, args, device, train_loader, test_l
         print(f"Saved {name} history to    {hist_path}")
 
     print(f"\nFinal {name} test performance:")
-    evaluate(model, test_loader, device, split_name="Test")
+    test_loss, test_acc = evaluate(
+        model, test_loader, device, split_name="Test")
+    print(f"{name}: test_loss={test_loss:.4f}, test_acc={test_acc:.4f}")
 
-    return history
+    return history, {"test_loss": test_loss, "test_acc": test_acc}
+
+
+def plot_training_loss(hist_shallow, hist_deep, hist_better, hist_resnet, save_path=None):
+    epochs = np.arange(1, len(hist_shallow["train_loss"]) + 1)
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(epochs, hist_shallow["train_loss"], label="ShallowCNN")
+    plt.plot(epochs, hist_deep["train_loss"], label="CNNBaseline")
+    plt.plot(epochs, hist_better["train_loss"], label="TooComplexCNN")
+    plt.plot(epochs, hist_resnet["train_loss"],
+             label="ResNet18 (transfer learning)")
+
+    plt.xlabel("Epoch")
+    plt.ylabel("Training Loss")
+    plt.title(
+        "ShallowCNN vs CNNBaseline vs TooComplexCNN vs ResNet18 – Training Loss")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=200)
+        print(f"Saved training-loss plot to {save_path}")
+
+    plt.show()
 
 
 def plot_comparison(hist_shallow, hist_deep, hist_better, hist_resnet, save_path=None):
@@ -104,7 +131,7 @@ def plot_comparison(hist_shallow, hist_deep, hist_better, hist_resnet, save_path
     plt.xlabel("Epoch")
     plt.ylabel("Validation Accuracy (%)")
     plt.title(
-        "ShallowCNN vs CNNBaseline vs BetterCNN vs ResNet18 – Validation Accuracy")
+        "ShallowCNN vs CNNBaseline vs TooComplexCNN vs ResNet18 – Validation Accuracy")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
@@ -112,6 +139,8 @@ def plot_comparison(hist_shallow, hist_deep, hist_better, hist_resnet, save_path
     if save_path is not None:
         plt.savefig(save_path, dpi=200)
         print(f"Saved comparison plot to {save_path}")
+
+    plt.show()
 
     plt.show()
 
@@ -131,7 +160,7 @@ def main():
     train_loader, test_loader, num_classes = get_dataloaders(args, device)
     image_size = tuple(args.image_size)
 
-    hist_shallow = run_model(
+    hist_shallow, test_shallow = run_model(
         "shallow_cnn",
         ShallowCNN,
         {"num_classes": num_classes, "image_size": image_size},
@@ -141,7 +170,7 @@ def main():
         test_loader,
     )
 
-    hist_deep = run_model(
+    hist_deep, test_deep = run_model(
         "cnn",
         CNN,
         {"in_channels": 3, "num_classes": num_classes},
@@ -151,7 +180,7 @@ def main():
         test_loader,
     )
 
-    hist_better = run_model(
+    hist_better, test_better = run_model(
         "tooComplex",
         advCNN,
         {"num_classes": num_classes, "image_size": image_size},
@@ -161,7 +190,7 @@ def main():
         test_loader,
     )
 
-    hist_resnet = run_model(
+    hist_resnet, test_resnet = run_model(
         "resnet18_tumor",                # matches checkpoints/resnet18_tumor_*.pth
         TumorResNet18,
         {"num_classes": num_classes},
@@ -171,7 +200,15 @@ def main():
         test_loader,
     )
 
+    # Nicely formatted final test accuracy summary
+    print("\n=== Final test accuracies (on held-out test set) ===")
+    print(f"ShallowCNN       : {test_shallow['test_acc'] * 100:.2f}%")
+    print(f"CNNBaseline      : {test_deep['test_acc'] * 100:.2f}%")
+    print(f"TooComplexCNN    : {test_better['test_acc'] * 100:.2f}%")
+    print(f"ResNet18 (TL)    : {test_resnet['test_acc'] * 100:.2f}%")
+
     if not args.no_plot:
+        # Validation accuracy comparison
         plot_comparison(
             hist_shallow,
             hist_deep,
@@ -180,6 +217,14 @@ def main():
             save_path="model_comparison_val_acc_four_models.png",
         )
 
+        # Training loss comparison
+        plot_training_loss(
+            hist_shallow,
+            hist_deep,
+            hist_better,
+            hist_resnet,
+            save_path="model_comparison_train_loss_four_models.png",
+        )
 
 
 if __name__ == "__main__":
