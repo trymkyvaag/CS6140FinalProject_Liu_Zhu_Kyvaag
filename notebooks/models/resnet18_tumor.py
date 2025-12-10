@@ -11,29 +11,21 @@ from utils import (
     evaluate,
 )
 
-# -------------------------
-# Model: ResNet18 transfer
-# -------------------------
-
 
 class TumorResNet18(nn.Module):
     def __init__(self, num_classes: int):
         super().__init__()
-        # Load ImageNet-pretrained weights
+
         weights = ResNet18_Weights.IMAGENET1K_V1
         self.backbone = resnet18(weights=weights)
 
         in_features = self.backbone.fc.in_features
-        # Replace classification head
         self.backbone.fc = nn.Linear(in_features, num_classes)
 
     def forward(self, x):
-        return self.backbone(x)  # logits
+        return self.backbone(x)
 
 
-# -------------------------
-# Training with history
-# -------------------------
 def train_with_history(model, train_loader, val_loader, device, epochs, lr):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
 
@@ -64,9 +56,6 @@ def train_with_history(model, train_loader, val_loader, device, epochs, lr):
     return history
 
 
-# -------------------------
-# Main
-# -------------------------
 def main():
     args = parse_args(
         description="ResNet18 transfer learning for brain tumor classification",
@@ -74,18 +63,15 @@ def main():
         default_test_root="/content/data/Testing",
         default_image_size=(224, 224),
         default_batch_size=32,
-        default_epochs=15,   # usually enough with pretrained backbone
+        default_epochs=15,
         default_lr=1e-4,
     )
 
     device = get_device()
     image_size = tuple(args.image_size)
-
-    # ImageNet mean/std for pretrained ResNet
     weights = ResNet18_Weights.IMAGENET1K_V1
     mean = (0.485, 0.456, 0.406)
     std = (0.229, 0.224, 0.225)
-
 
     train_transform = transforms.Compose([
         transforms.Resize(image_size),

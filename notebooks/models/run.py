@@ -115,7 +115,7 @@ def plot_comparison(hist_shallow, hist_deep, hist_better, save_path=None):
 def main():
     args = parse_args(
         description="Compare ShallowCNN vs CNN vs BetterCNN on brain tumor dataset",
-        default_train_root="/content/data/Training",
+        default_train_root="/content/data/Training", #
         default_test_root="/content/data/Testing",
         default_image_size=(224, 224),
         default_batch_size=32,
@@ -127,7 +127,6 @@ def main():
     train_loader, test_loader, num_classes = get_dataloaders(args, device)
     image_size = tuple(args.image_size)
 
-    # ---- Run all three models (train or load) ----
     hist_shallow = run_model(
         "shallow_cnn",
         ShallowCNN,

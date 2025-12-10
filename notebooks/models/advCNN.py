@@ -4,11 +4,7 @@ import torch.nn as nn
 
 class advCNN(nn.Module):
     """
-    A small modern CNN:
-    - 3 conv blocks with BatchNorm and ReLU
-    - MaxPool only 3x → preserves spatial info
-    - Global average pooling
-    - Small MLP head with dropout
+    This thing is so ass:
     """
 
     def __init__(self, num_classes: int, image_size=(224, 224)):
@@ -32,15 +28,15 @@ class advCNN(nn.Module):
             conv_block(64, 128),  # 56 -> 28
         )
 
-        # Global average pooling to (B, 128)
+
         self.gap = nn.AdaptiveAvgPool2d(1)
 
         self.classifier = nn.Sequential(
-            nn.Flatten(),                      # (B, 128,1,1) -> (B, 128)
+            nn.Flatten(),               
             nn.Linear(128, 64),
             nn.ReLU(inplace=True),
             nn.Dropout(p=0.5),
-            nn.Linear(64, num_classes)         # logits for CrossEntropy
+            nn.Linear(64, num_classes)  
         )
 
     def forward(self, x):

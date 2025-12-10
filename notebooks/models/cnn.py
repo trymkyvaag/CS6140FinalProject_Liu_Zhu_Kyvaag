@@ -27,11 +27,7 @@ class CNN(nn.Module):
         self.conv2 = nn.Conv2d(64, 64, kernel_size=5, stride=2, padding=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=5, stride=2, padding=2)
         self.conv4 = nn.Conv2d(64, 64, kernel_size=5, stride=2, padding=2)
-
-        # Make it independent of input size by pooling down to 2×2
         self.pool = nn.AdaptiveAvgPool2d((2, 2))
-
-        # 64 channels * 2 * 2 = 256
         self.linear1 = nn.Linear(256, 128)
         self.linear2 = nn.Linear(128, num_classes)
 
@@ -46,7 +42,6 @@ class CNN(nn.Module):
         x = x.view(x.size(0), -1)             # (B, 256)
 
         x = self.act(self.linear1(x))
-        # return logits (CrossEntropy in utils)
         x = self.linear2(x)
         return x
 

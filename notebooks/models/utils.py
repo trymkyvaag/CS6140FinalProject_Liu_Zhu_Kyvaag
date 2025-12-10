@@ -252,18 +252,18 @@ def train_with_history_and_checkpoint(
             f"val_loss={val_loss:.4f}, val_acc={val_acc:.4f}"
         )
 
-        # ✅ Save best checkpoint
+
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             torch.save(model.state_dict(), ckpt_path)
-            print(f"✅ Saved best model to {ckpt_path}")
+            print(f"Saved best model to {ckpt_path}")
 
     return history
 
 
 def load_if_exists(model, ckpt_path, device):
     if ckpt_path is not None and os.path.exists(ckpt_path):
-        print(f"✅ Loading existing checkpoint: {ckpt_path}")
+        print(f"Loading existing checkpoint: {ckpt_path}")
         model.load_state_dict(torch.load(ckpt_path, map_location=device))
         return True
     return False

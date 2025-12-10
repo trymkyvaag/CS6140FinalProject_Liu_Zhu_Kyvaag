@@ -72,7 +72,7 @@ def main():
                optimizer, device, args.epochs)
 
     print("Final evaluation on test set:")
-    from utils import evaluate  # avoid circular import at top if you prefer
+    from utils import evaluate  
     evaluate(model, test_loader, device, split_name="Test")
 
 
