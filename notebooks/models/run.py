@@ -1,4 +1,3 @@
-# notebooks/models/compare_models.py
 
 import os
 import numpy as np
