@@ -1,11 +1,10 @@
 # CS6140FinalProject_Liu_Zhu_Kyvaag
-Using various NN for MRI image classification 
 
 
 Here is instructions on how to run both the 2D and 3D dataset.
 Instructions are expected to be run in colab or similar but only thing that would have to be changed is datapathh:
 
-Colab: \newline
+Colab:  
 
 !git clone https://github.com/trymkyvaag/CS6140FinalProject_Liu_Zhu_Kyvaag.git  
 !cd CS6140FinalProject_Liu_Zhu_Kyvaag  
@@ -23,6 +22,6 @@ python3 /content/CS6140FinalProject_Liu_Zhu_Kyvaag/notebooks/models/run.py --epo
 
 
 
-3d: \newline
+3d: 
 run notebook after checking that datapaths are correct for where your data is downloaded.
 
