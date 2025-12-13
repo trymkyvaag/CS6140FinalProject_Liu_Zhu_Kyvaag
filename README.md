@@ -1,4 +1,6 @@
 # CS6140FinalProject_Liu_Zhu_Kyvaag
+3D dataset: https://www.synapse.org/Synapse:syn53708249/files/
+2D dataset: https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset
 
 
 Here is instructions on how to run both the 2D and 3D dataset.
